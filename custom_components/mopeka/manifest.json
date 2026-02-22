@@ -3,11 +3,12 @@
   "name": "Mopeka Tank Sensor",
   "codeowners": ["@petehurth"],
   "config_flow": true,
-  "dependencies": ["bluetooth"],
+  "dependencies": ["bluetooth", "bluetooth_adapters"],
   "documentation": "https://github.com/phurth/ha-mopeka",
   "bluetooth": [
     {
-      "manufacturer_id": 89
+      "manufacturer_id": 89,
+      "connectable": false
     }
   ],
   "iot_class": "local_push",

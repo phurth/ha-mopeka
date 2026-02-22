@@ -25,6 +25,13 @@ async def async_get_config_entry_diagnostics(
     return {
         "config_entry": async_redact_data(dict(entry.data), TO_REDACT),
         "options": dict(entry.options),
+        "runtime_config": {
+            "address": async_redact_data({"address": coordinator.address}, TO_REDACT),
+            "medium_type": coordinator.medium_type.value,
+            "tank_type": coordinator.tank_type,
+            "minimum_quality": coordinator.minimum_quality,
+            "listener_active": coordinator._unsub_ble is not None,
+        },
         "availability": {
             "available": coordinator.available,
             "data_healthy": coordinator.data_healthy,

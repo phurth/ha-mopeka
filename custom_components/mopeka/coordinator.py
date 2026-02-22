@@ -49,9 +49,17 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
         self.minimum_quality: int = int(entry.options.get(CONF_MINIMUM_QUALITY, entry.data.get(CONF_MINIMUM_QUALITY, 0)))
         self._last_seen_monotonic: float | None = None
         self._unsub_ble: callable | None = None
+        _LOGGER.info(
+            "Mopeka coordinator init: address=%s medium=%s tank=%s min_quality=%s",
+            self.address,
+            self.medium_type.value,
+            self.tank_type,
+            self.minimum_quality,
+        )
 
     async def async_start(self) -> None:
         """Start BLE callback subscription."""
+        _LOGGER.info("Starting passive BLE listener for Mopeka %s", self.address)
 
         @callback
         def _ble_callback(service_info: BluetoothServiceInfoBleak, change: BluetoothChange) -> None:
@@ -66,6 +74,7 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
 
         last_info = bluetooth.async_last_service_info(self.hass, self.address, connectable=False)
         if last_info is not None:
+            _LOGGER.debug("Using last cached BLE service info for %s", self.address)
             self._handle_service_info(last_info)
 
     async def async_stop(self) -> None:
@@ -73,6 +82,7 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
         if self._unsub_ble is not None:
             self._unsub_ble()
             self._unsub_ble = None
+            _LOGGER.info("Stopped passive BLE listener for Mopeka %s", self.address)
 
     @property
     def data_healthy(self) -> bool:
@@ -99,6 +109,12 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
         payload = extract_mopeka_manufacturer_payload(service_info.manufacturer_data)
         if payload is None:
             return
+        _LOGGER.debug(
+            "BLE adv received for %s: rssi=%s mfg_len=%s",
+            service_info.address,
+            service_info.rssi,
+            len(payload),
+        )
         parsed = parse_mopeka_data(
             address=service_info.address,
             manufacturer_data=payload,
@@ -106,10 +122,26 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
             tank_type=self.tank_type,
         )
         if parsed is None:
+            _LOGGER.debug("Failed to parse Mopeka manufacturer payload for %s", service_info.address)
             return
         if parsed.quality_percent < self.minimum_quality:
+            _LOGGER.debug(
+                "Dropping reading for %s due to quality threshold: %s < %s",
+                service_info.address,
+                parsed.quality_percent,
+                self.minimum_quality,
+            )
             return
         self._last_seen_monotonic = time.monotonic()
+        _LOGGER.debug(
+            "Parsed Mopeka %s: tank=%0.1f%% temp=%sC batt=%s%% quality=%s%% model=%s",
+            service_info.address,
+            parsed.tank_level_percent,
+            parsed.temperature_c,
+            parsed.battery_percent,
+            parsed.quality_percent,
+            parsed.model_name,
+        )
         self.async_set_updated_data(parsed)
 
     async def _async_update_data(self) -> MopekaSensorData | None:

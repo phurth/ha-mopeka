@@ -37,3 +37,15 @@ This integration ports the Android BLE Plugin Bridge Mopeka implementation to na
   - `docs/INTERNALS.md` section `7.6. Mopeka Tank Sensor Protocol`
   - Android plugin files under `plugins/mopeka/`
 - Passive integration: availability depends on receiving advertisements.
+
+## Debug Logging
+
+To enable verbose logs for troubleshooting:
+
+```yaml
+logger:
+  logs:
+    custom_components.mopeka: debug
+```
+
+Use **Download diagnostics** from the integration page for runtime state, last parsed payload, and availability health details.
