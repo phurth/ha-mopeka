@@ -1,0 +1,6 @@
+{
+  "name": "Mopeka Tank Sensor",
+  "content_in_root": false,
+  "render_readme": true,
+  "country": ["US", "CA", "GB", "AU", "DE", "FR", "NL", "SE", "NO", "FI", "ES", "IT"]
+}

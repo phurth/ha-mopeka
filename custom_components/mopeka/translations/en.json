@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mopeka Tank Sensor",
+        "description": "Configure a Mopeka BLE tank sensor.",
+        "data": {
+          "address": "Bluetooth address",
+          "medium_type": "Medium type",
+          "tank_type": "Tank type",
+          "minimum_quality": "Minimum quality"
+        }
+      },
+      "confirm": {
+        "title": "Confirm Mopeka device",
+        "description": "Set options for discovered Mopeka sensor.",
+        "data": {
+          "medium_type": "Medium type",
+          "tank_type": "Tank type",
+          "minimum_quality": "Minimum quality"
+        }
+      }
+    },
+    "abort": {
+      "not_supported": "Device is not a Mopeka sensor.",
+      "no_device": "No discovery device available.",
+      "already_configured": "Device is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Mopeka options",
+        "data": {
+          "medium_type": "Medium type",
+          "tank_type": "Tank type",
+          "minimum_quality": "Minimum quality"
+        }
+      }
+    }
+  }
+}
