@@ -1,9 +1,14 @@
 {
   "domain": "mopeka",
   "name": "Mopeka Tank Sensor",
-  "codeowners": ["@petehurth"],
+  "codeowners": [
+    "@petehurth"
+  ],
   "config_flow": true,
-  "dependencies": ["bluetooth", "bluetooth_adapters"],
+  "dependencies": [
+    "bluetooth",
+    "bluetooth_adapters"
+  ],
   "documentation": "https://github.com/phurth/ha-mopeka",
   "bluetooth": [
     {
@@ -12,5 +17,5 @@
     }
   ],
   "iot_class": "local_push",
-  "version": "0.1.0"
+  "version": "1.0.1"
 }
