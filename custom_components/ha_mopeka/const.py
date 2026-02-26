@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 import math
 
-DOMAIN = "mopeka"
+DOMAIN = "ha_mopeka"
 
 CONF_MEDIUM_TYPE = "medium_type"
 CONF_TANK_TYPE = "tank_type"

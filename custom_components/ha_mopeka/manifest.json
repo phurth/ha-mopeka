@@ -1,5 +1,5 @@
 {
-  "domain": "mopeka",
+  "domain": "ha_mopeka",
   "name": "Mopeka Tank Sensor",
   "codeowners": [
     "@phurth"
