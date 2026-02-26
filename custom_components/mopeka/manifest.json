@@ -10,6 +10,7 @@
     "bluetooth_adapters"
   ],
   "documentation": "https://github.com/phurth/ha-mopeka",
+  "issue_tracker": "https://github.com/phurth/ha-mopeka/issues",
   "bluetooth": [
     {
       "manufacturer_id": 89,
