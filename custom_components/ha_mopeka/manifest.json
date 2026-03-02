@@ -11,6 +11,7 @@
   ],
   "documentation": "https://github.com/phurth/ha-mopeka",
   "issue_tracker": "https://github.com/phurth/ha-mopeka/issues",
+  "integration_type": "device",
   "bluetooth": [
     {
       "manufacturer_id": 89,
