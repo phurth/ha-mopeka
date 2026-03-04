@@ -4,6 +4,8 @@ Mopeka Pro Check/Pro Plus/Pro H2O BLE tank sensor integration for Home Assistant
 
 This integration ports the Android BLE Plugin Bridge Mopeka implementation to native HA custom integration form.
 
+> **Disclaimer:** This is an independent community integration and is not affiliated with, endorsed by, or supported by Mopeka or any of its affiliates. Use it at your own risk.
+
 ## Features
 
 - Passive BLE advertisement parsing (no GATT connection)
