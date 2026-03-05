@@ -18,7 +18,18 @@ SERVICE_UUID = "0000fee5-0000-1000-8000-00805f9b34fb"
 DATA_HEALTH_TIMEOUT_SECONDS = 120
 OFFLINE_TIMEOUT_SECONDS = 30 * 60
 
-QUALITY_THRESHOLDS = (0, 20, 50, 80)
+QUALITY_THRESHOLDS = (0, 20, 50, 80)  # legacy — preserved for migration only
+
+# Maps star count (0-3, matching official Mopeka app) to display label.
+QUALITY_STAR_OPTIONS: dict[int, str] = {
+    0: "0 Stars (any signal)",
+    1: "1 Star",
+    2: "2 Stars",
+    3: "3 Stars",
+}
+
+# Maps old percentage thresholds to star counts for backward compat.
+_LEGACY_QUALITY_MAP: dict[int, int] = {0: 0, 20: 1, 50: 2, 80: 3}
 
 # Sensor dead-zone floor for propane vertical tanks (Mopeka empirical constant).
 # Readings at or below this level represent an empty tank.

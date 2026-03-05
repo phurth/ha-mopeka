@@ -22,7 +22,7 @@ from .const import (
     DOMAIN,
     MANUFACTURER_ID,
     MediumType,
-    QUALITY_THRESHOLDS,
+    QUALITY_STAR_OPTIONS,
     TANK_SPECS,
 )
 
@@ -51,7 +51,7 @@ def _core_schema(defaults: dict[str, Any], address_field: vol.Marker | None = No
         _TANK_TYPE_LABELS
     )
     fields[vol.Required(CONF_MINIMUM_QUALITY, default=int(defaults.get(CONF_MINIMUM_QUALITY, 0)))] = vol.In(
-        list(QUALITY_THRESHOLDS)
+        QUALITY_STAR_OPTIONS
     )
     return vol.Schema(fields)
 
