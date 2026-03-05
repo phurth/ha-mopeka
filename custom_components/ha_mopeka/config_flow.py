@@ -14,9 +14,11 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFl
 from homeassistant.const import CONF_ADDRESS
 
 from .const import (
+    CONF_CUSTOM_TANK_HEIGHT_MM,
     CONF_MEDIUM_TYPE,
     CONF_MINIMUM_QUALITY,
     CONF_TANK_TYPE,
+    CUSTOM_TANK_KEYS,
     DOMAIN,
     MANUFACTURER_ID,
     MediumType,
@@ -24,23 +26,38 @@ from .const import (
     TANK_SPECS,
 )
 
+# Human-readable labels for the tank type dropdown, keyed by TANK_SPECS id.
+_TANK_TYPE_LABELS: dict[str, str] = {k: v.name for k, v in TANK_SPECS.items()}
 
-def _options_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
-    defaults = defaults or {}
+# Default custom height (mm) shown as placeholder when a custom type is chosen.
+_DEFAULT_CUSTOM_HEIGHT_MM = 300
+
+
+def _core_schema(defaults: dict[str, Any], address_field: vol.Marker | None = None) -> vol.Schema:
+    """Build the main configuration schema (Step 1)."""
+    fields: dict[vol.Marker, Any] = {}
+    if address_field is not None:
+        fields[address_field] = str
+    fields[vol.Required(CONF_MEDIUM_TYPE, default=defaults.get(CONF_MEDIUM_TYPE, MediumType.PROPANE.value))] = vol.In(
+        [item.value for item in MediumType]
+    )
+    fields[vol.Required(CONF_TANK_TYPE, default=defaults.get(CONF_TANK_TYPE, "20lb_v"))] = vol.In(
+        _TANK_TYPE_LABELS
+    )
+    fields[vol.Required(CONF_MINIMUM_QUALITY, default=int(defaults.get(CONF_MINIMUM_QUALITY, 0)))] = vol.In(
+        list(QUALITY_THRESHOLDS)
+    )
+    return vol.Schema(fields)
+
+
+def _custom_dimensions_schema(defaults: dict[str, Any]) -> vol.Schema:
+    """Schema for Step 2: custom tank height entry."""
     return vol.Schema(
         {
             vol.Required(
-                CONF_MEDIUM_TYPE,
-                default=defaults.get(CONF_MEDIUM_TYPE, MediumType.PROPANE.value),
-            ): vol.In([item.value for item in MediumType]),
-            vol.Required(
-                CONF_TANK_TYPE,
-                default=defaults.get(CONF_TANK_TYPE, "20lb_v"),
-            ): vol.In(list(TANK_SPECS.keys())),
-            vol.Required(
-                CONF_MINIMUM_QUALITY,
-                default=int(defaults.get(CONF_MINIMUM_QUALITY, 0)),
-            ): vol.In(list(QUALITY_THRESHOLDS)),
+                CONF_CUSTOM_TANK_HEIGHT_MM,
+                default=int(defaults.get(CONF_CUSTOM_TANK_HEIGHT_MM, _DEFAULT_CUSTOM_HEIGHT_MM)),
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10000)),
         }
     )
 
@@ -52,6 +69,7 @@ class MopekaConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._discovery_info: BluetoothServiceInfoBleak | None = None
+        self._pending_data: dict[str, Any] = {}
 
     async def async_step_bluetooth(self, discovery_info: BluetoothServiceInfoBleak) -> ConfigFlowResult:
         """Handle BLE discovery."""
@@ -65,57 +83,67 @@ class MopekaConfigFlow(ConfigFlow, domain=DOMAIN):
         return await self.async_step_confirm()
 
     async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Confirm BLE discovery and collect options."""
+        """Confirm BLE discovery and collect options (Step 1)."""
         if self._discovery_info is None:
             return self.async_abort(reason="no_device")
 
         if user_input is not None:
+            self._pending_data = {
+                CONF_ADDRESS: self._discovery_info.address,
+                **user_input,
+            }
+            if user_input[CONF_TANK_TYPE] in CUSTOM_TANK_KEYS:
+                return await self.async_step_custom_dimensions()
             return self.async_create_entry(
                 title=f"Mopeka {self._discovery_info.address}",
-                data={
-                    CONF_ADDRESS: self._discovery_info.address,
-                    CONF_MEDIUM_TYPE: user_input[CONF_MEDIUM_TYPE],
-                    CONF_TANK_TYPE: user_input[CONF_TANK_TYPE],
-                    CONF_MINIMUM_QUALITY: user_input[CONF_MINIMUM_QUALITY],
-                },
+                data=self._pending_data,
             )
 
-        return self.async_show_form(step_id="confirm", data_schema=_options_schema())
+        return self.async_show_form(
+            step_id="confirm",
+            data_schema=_core_schema({}),
+        )
+
+    async def async_step_custom_dimensions(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Step 2: collect custom tank height (only for custom tank types)."""
+        if user_input is not None:
+            self._pending_data[CONF_CUSTOM_TANK_HEIGHT_MM] = user_input[CONF_CUSTOM_TANK_HEIGHT_MM]
+            title = f"Mopeka {self._pending_data.get(CONF_ADDRESS, 'sensor')}"
+            return self.async_create_entry(title=title, data=self._pending_data)
+
+        tank_type = self._pending_data.get(CONF_TANK_TYPE, "custom")
+        return self.async_show_form(
+            step_id="custom_dimensions",
+            data_schema=_custom_dimensions_schema(self._pending_data),
+            description_placeholders={"tank_type": TANK_SPECS[tank_type].name},
+        )
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Manual setup flow."""
+        """Manual setup flow (Step 1)."""
         if user_input is not None:
             address = user_input[CONF_ADDRESS]
             await self.async_set_unique_id(address)
             self._abort_if_unique_id_configured()
-            return self.async_create_entry(
-                title=f"Mopeka {address}",
-                data=user_input,
-            )
+            self._pending_data = dict(user_input)
+            if user_input[CONF_TANK_TYPE] in CUSTOM_TANK_KEYS:
+                return await self.async_step_custom_dimensions()
+            return self.async_create_entry(title=f"Mopeka {address}", data=self._pending_data)
 
         discovered: dict[str, str] = {}
         for info in async_discovered_service_info(self.hass):
             if MANUFACTURER_ID in info.manufacturer_data:
                 discovered[info.address] = f"{info.name or 'Mopeka'} ({info.address})"
 
-        if discovered:
-            schema = vol.Schema(
-                {
-                    vol.Required(CONF_ADDRESS): vol.In(discovered),
-                    vol.Required(CONF_MEDIUM_TYPE, default=MediumType.PROPANE.value): vol.In([item.value for item in MediumType]),
-                    vol.Required(CONF_TANK_TYPE, default="20lb_v"): vol.In(list(TANK_SPECS.keys())),
-                    vol.Required(CONF_MINIMUM_QUALITY, default=0): vol.In(list(QUALITY_THRESHOLDS)),
-                }
-            )
-        else:
-            schema = vol.Schema(
-                {
-                    vol.Required(CONF_ADDRESS): str,
-                    vol.Required(CONF_MEDIUM_TYPE, default=MediumType.PROPANE.value): vol.In([item.value for item in MediumType]),
-                    vol.Required(CONF_TANK_TYPE, default="20lb_v"): vol.In(list(TANK_SPECS.keys())),
-                    vol.Required(CONF_MINIMUM_QUALITY, default=0): vol.In(list(QUALITY_THRESHOLDS)),
-                }
-            )
+        address_field: vol.Marker = (
+            vol.Required(CONF_ADDRESS, default=next(iter(discovered)))
+            if discovered
+            else vol.Required(CONF_ADDRESS)
+        )
+        address_validator = vol.In(discovered) if discovered else str
+
+        schema = _core_schema({}, address_field=address_field)
+        # Replace the address field validator with the appropriate one
+        schema = vol.Schema({**{k: (address_validator if k == address_field else v) for k, v in schema.schema.items()}})
 
         return self.async_show_form(step_id="user", data_schema=schema)
 
@@ -129,14 +157,42 @@ class MopekaOptionsFlow(OptionsFlow):
 
     def __init__(self, config_entry) -> None:
         self.config_entry = config_entry
+        self._pending_options: dict[str, Any] = {}
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Step 1: core options."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            self._pending_options = dict(user_input)
+            if user_input[CONF_TANK_TYPE] in CUSTOM_TANK_KEYS:
+                return await self.async_step_custom_dimensions()
+            return self.async_create_entry(title="", data=self._pending_options)
 
         defaults = {
-            CONF_MEDIUM_TYPE: self.config_entry.options.get(CONF_MEDIUM_TYPE, self.config_entry.data.get(CONF_MEDIUM_TYPE, MediumType.PROPANE.value)),
-            CONF_TANK_TYPE: self.config_entry.options.get(CONF_TANK_TYPE, self.config_entry.data.get(CONF_TANK_TYPE, "20lb_v")),
-            CONF_MINIMUM_QUALITY: self.config_entry.options.get(CONF_MINIMUM_QUALITY, self.config_entry.data.get(CONF_MINIMUM_QUALITY, 0)),
+            CONF_MEDIUM_TYPE: self.config_entry.options.get(
+                CONF_MEDIUM_TYPE, self.config_entry.data.get(CONF_MEDIUM_TYPE, MediumType.PROPANE.value)
+            ),
+            CONF_TANK_TYPE: self.config_entry.options.get(
+                CONF_TANK_TYPE, self.config_entry.data.get(CONF_TANK_TYPE, "20lb_v")
+            ),
+            CONF_MINIMUM_QUALITY: self.config_entry.options.get(
+                CONF_MINIMUM_QUALITY, self.config_entry.data.get(CONF_MINIMUM_QUALITY, 0)
+            ),
         }
-        return self.async_show_form(step_id="init", data_schema=_options_schema(defaults))
+        return self.async_show_form(step_id="init", data_schema=_core_schema(defaults))
+
+    async def async_step_custom_dimensions(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Step 2: custom tank height."""
+        if user_input is not None:
+            self._pending_options[CONF_CUSTOM_TANK_HEIGHT_MM] = user_input[CONF_CUSTOM_TANK_HEIGHT_MM]
+            return self.async_create_entry(title="", data=self._pending_options)
+
+        existing_height = self.config_entry.options.get(
+            CONF_CUSTOM_TANK_HEIGHT_MM,
+            self.config_entry.data.get(CONF_CUSTOM_TANK_HEIGHT_MM, _DEFAULT_CUSTOM_HEIGHT_MM),
+        )
+        tank_type = self._pending_options.get(CONF_TANK_TYPE, "custom")
+        return self.async_show_form(
+            step_id="custom_dimensions",
+            data_schema=_custom_dimensions_schema({CONF_CUSTOM_TANK_HEIGHT_MM: existing_height}),
+            description_placeholders={"tank_type": TANK_SPECS[tank_type].name},
+        )

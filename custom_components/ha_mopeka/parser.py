@@ -19,6 +19,7 @@ def parse_mopeka_data(
     manufacturer_data: bytes,
     medium_type: MediumType,
     tank_type: str,
+    custom_height_mm: float | None = None,
 ) -> MopekaSensorData | None:
     """Parse Mopeka manufacturer payload into structured data."""
     if len(manufacturer_data) < MIN_MANUFACTURER_PAYLOAD:
@@ -46,7 +47,7 @@ def parse_mopeka_data(
     battery_percent = max(0, min(100, battery_percent))
 
     compensated_mm = apply_temperature_compensation(distance_raw_mm, temp_raw, medium_type)
-    tank_percent = calculate_tank_percentage(tank_type, float(compensated_mm))
+    tank_percent = calculate_tank_percentage(tank_type, float(compensated_mm), custom_height_mm)
 
     return MopekaSensorData(
         mac_address=address,

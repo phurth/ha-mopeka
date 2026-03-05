@@ -8,7 +8,7 @@
           "address": "Bluetooth address",
           "medium_type": "Medium type",
           "tank_type": "Tank type",
-          "minimum_quality": "Minimum quality"
+          "minimum_quality": "Minimum signal quality"
         }
       },
       "confirm": {
@@ -17,7 +17,14 @@
         "data": {
           "medium_type": "Medium type",
           "tank_type": "Tank type",
-          "minimum_quality": "Minimum quality"
+          "minimum_quality": "Minimum signal quality"
+        }
+      },
+      "custom_dimensions": {
+        "title": "Custom tank dimensions",
+        "description": "Enter the usable height for '{tank_type}'.\n\nFor vertical cylinders: distance from sensor zero to the maximum fill level (mm).\nFor horizontal cylinders: tank interior diameter (mm).\nFor rectangular tanks: tank interior depth (mm).",
+        "data": {
+          "custom_tank_height_mm": "Tank height (mm)"
         }
       }
     },
@@ -34,7 +41,14 @@
         "data": {
           "medium_type": "Medium type",
           "tank_type": "Tank type",
-          "minimum_quality": "Minimum quality"
+          "minimum_quality": "Minimum signal quality"
+        }
+      },
+      "custom_dimensions": {
+        "title": "Custom tank dimensions",
+        "description": "Enter the usable height for '{tank_type}'.\n\nFor vertical cylinders: distance from sensor zero to the maximum fill level (mm).\nFor horizontal cylinders: tank interior diameter (mm).\nFor rectangular tanks: tank interior depth (mm).",
+        "data": {
+          "custom_tank_height_mm": "Tank height (mm)"
         }
       }
     }

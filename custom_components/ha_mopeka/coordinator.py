@@ -18,6 +18,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
+    CONF_CUSTOM_TANK_HEIGHT_MM,
     CONF_MEDIUM_TYPE,
     CONF_MINIMUM_QUALITY,
     CONF_TANK_TYPE,
@@ -47,6 +48,8 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
         self.medium_type = MediumType(entry.options.get(CONF_MEDIUM_TYPE, entry.data.get(CONF_MEDIUM_TYPE, MediumType.PROPANE.value)))
         self.tank_type: str = entry.options.get(CONF_TANK_TYPE, entry.data.get(CONF_TANK_TYPE, "20lb_v"))
         self.minimum_quality: int = int(entry.options.get(CONF_MINIMUM_QUALITY, entry.data.get(CONF_MINIMUM_QUALITY, 0)))
+        raw_custom = entry.options.get(CONF_CUSTOM_TANK_HEIGHT_MM, entry.data.get(CONF_CUSTOM_TANK_HEIGHT_MM))
+        self.custom_tank_height_mm: float | None = float(raw_custom) if raw_custom is not None else None
         self._last_seen_monotonic: float | None = None
         self._unsub_ble: callable | None = None
         _LOGGER.info(
@@ -120,6 +123,7 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
             manufacturer_data=payload,
             medium_type=self.medium_type,
             tank_type=self.tank_type,
+            custom_height_mm=self.custom_tank_height_mm,
         )
         if parsed is None:
             _LOGGER.debug("Failed to parse Mopeka manufacturer payload for %s", service_info.address)
