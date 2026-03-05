@@ -7,8 +7,7 @@
         "data": {
           "address": "Bluetooth address",
           "medium_type": "Medium type",
-          "tank_type": "Tank type",
-          "minimum_quality": "Minimum signal quality"
+          "tank_type": "Tank type"
         }
       },
       "confirm": {
@@ -16,8 +15,7 @@
         "description": "Set options for discovered Mopeka sensor.",
         "data": {
           "medium_type": "Medium type",
-          "tank_type": "Tank type",
-          "minimum_quality": "Minimum signal quality"
+          "tank_type": "Tank type"
         }
       },
       "custom_dimensions": {
@@ -40,8 +38,7 @@
         "title": "Mopeka options",
         "data": {
           "medium_type": "Medium type",
-          "tank_type": "Tank type",
-          "minimum_quality": "Minimum signal quality"
+          "tank_type": "Tank type"
         }
       },
       "custom_dimensions": {

@@ -16,13 +16,11 @@ from homeassistant.const import CONF_ADDRESS
 from .const import (
     CONF_CUSTOM_TANK_HEIGHT_MM,
     CONF_MEDIUM_TYPE,
-    CONF_MINIMUM_QUALITY,
     CONF_TANK_TYPE,
     CUSTOM_TANK_KEYS,
     DOMAIN,
     MANUFACTURER_ID,
     MediumType,
-    QUALITY_STAR_OPTIONS,
     TANK_SPECS,
 )
 
@@ -49,9 +47,6 @@ def _core_schema(defaults: dict[str, Any], address_field: vol.Marker | None = No
     )
     fields[vol.Required(CONF_TANK_TYPE, default=defaults.get(CONF_TANK_TYPE, "20lb_v"))] = vol.In(
         _TANK_TYPE_LABELS
-    )
-    fields[vol.Required(CONF_MINIMUM_QUALITY, default=int(defaults.get(CONF_MINIMUM_QUALITY, 0)))] = vol.In(
-        QUALITY_STAR_OPTIONS
     )
     return vol.Schema(fields)
 
@@ -192,9 +187,6 @@ class MopekaOptionsFlow(OptionsFlow):
             ),
             CONF_TANK_TYPE: self.config_entry.options.get(
                 CONF_TANK_TYPE, self.config_entry.data.get(CONF_TANK_TYPE, "20lb_v")
-            ),
-            CONF_MINIMUM_QUALITY: self.config_entry.options.get(
-                CONF_MINIMUM_QUALITY, self.config_entry.data.get(CONF_MINIMUM_QUALITY, 0)
             ),
         }
         return self.async_show_form(step_id="init", data_schema=_core_schema(defaults))

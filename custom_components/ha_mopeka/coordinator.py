@@ -20,13 +20,11 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .const import (
     CONF_CUSTOM_TANK_HEIGHT_MM,
     CONF_MEDIUM_TYPE,
-    CONF_MINIMUM_QUALITY,
     CONF_TANK_TYPE,
     DATA_HEALTH_TIMEOUT_SECONDS,
     DOMAIN,
     MediumType,
     OFFLINE_TIMEOUT_SECONDS,
-    _LEGACY_QUALITY_MAP,
 )
 from .model import MopekaSensorData
 from .parser import extract_mopeka_manufacturer_payload, parse_mopeka_data
@@ -48,19 +46,15 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
         self.address: str = entry.data[CONF_ADDRESS]
         self.medium_type = MediumType(entry.options.get(CONF_MEDIUM_TYPE, entry.data.get(CONF_MEDIUM_TYPE, MediumType.PROPANE.value)))
         self.tank_type: str = entry.options.get(CONF_TANK_TYPE, entry.data.get(CONF_TANK_TYPE, "20lb_v"))
-        raw_q = int(entry.options.get(CONF_MINIMUM_QUALITY, entry.data.get(CONF_MINIMUM_QUALITY, 0)))
-        # Migrate old percentage thresholds (0/20/50/80) to star counts (0-3)
-        self.minimum_quality: int = _LEGACY_QUALITY_MAP.get(raw_q, raw_q) if raw_q > 3 else raw_q
         raw_custom = entry.options.get(CONF_CUSTOM_TANK_HEIGHT_MM, entry.data.get(CONF_CUSTOM_TANK_HEIGHT_MM))
         self.custom_tank_height_mm: float | None = float(raw_custom) if raw_custom is not None else None
         self._last_seen_monotonic: float | None = None
         self._unsub_ble: callable | None = None
         _LOGGER.info(
-            "Mopeka coordinator init: address=%s medium=%s tank=%s min_quality=%s",
+            "Mopeka coordinator init: address=%s medium=%s tank=%s",
             self.address,
             self.medium_type.value,
             self.tank_type,
-            self.minimum_quality,
         )
 
     async def async_start(self) -> None:
@@ -131,14 +125,15 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
         if parsed is None:
             _LOGGER.debug("Failed to parse Mopeka manufacturer payload for %s", service_info.address)
             return
-        if parsed.quality_raw < self.minimum_quality:
+        # When the sensor reports quality=0 it has no reliable echo return —
+        # the tank is empty or the signal is lost. Clamp level to 0%.
+        if parsed.quality_raw == 0:
             _LOGGER.debug(
-                "Dropping reading for %s due to quality threshold: %s stars < %s stars",
+                "Quality=0 for %s: clamping tank level to 0%% (was %.1f%%)",
                 service_info.address,
-                parsed.quality_raw,
-                self.minimum_quality,
+                parsed.tank_level_percent,
             )
-            return
+            parsed.tank_level_percent = 0.0
         self._last_seen_monotonic = time.monotonic()
         _LOGGER.debug(
             "Parsed Mopeka %s: tank=%0.1f%% temp=%sC batt=%s%% quality=%s%% model=%s",

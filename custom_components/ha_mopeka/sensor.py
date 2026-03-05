@@ -174,13 +174,20 @@ class MopekaSensor(CoordinatorEntity[MopekaCoordinator], SensorEntity):
         return self.entity_description.value_fn(self.coordinator.data)
 
     @property
-    def extra_state_attributes(self) -> dict[str, float | int] | None:
+    def extra_state_attributes(self) -> dict[str, float | int | str] | None:
         if self.coordinator.data is None:
             return None
         if self.entity_description.key != "tank_level":
             return None
-        inches = self.coordinator.data.compensated_distance_mm / 25.4
+        data = self.coordinator.data
+        inches = data.compensated_distance_mm / 25.4
+        status = (
+            "Empty or signal lost"
+            if data.quality_raw == 0
+            else "OK"
+        )
         return {
-            "distance_mm": self.coordinator.data.compensated_distance_mm,
+            "distance_mm": data.compensated_distance_mm,
             "distance_in": round(inches, 1),
+            "level_status": status,
         }
