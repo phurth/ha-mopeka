@@ -22,9 +22,9 @@
       },
       "custom_dimensions": {
         "title": "Custom tank dimensions",
-        "description": "Enter the usable height for '{tank_type}'.\n\nFor vertical cylinders: distance from sensor zero to the maximum fill level (mm).\nFor horizontal cylinders: tank interior diameter (mm).\nFor rectangular tanks: tank interior depth (mm).",
+        "description": "Enter the usable height in {unit} for '{tank_type}'.\n\nFor vertical cylinders: distance from sensor zero to the maximum fill level.\nFor horizontal cylinders: tank interior diameter.\nFor rectangular tanks: tank interior depth.",
         "data": {
-          "custom_tank_height_mm": "Tank height (mm)"
+          "custom_tank_height_mm": "Tank height"
         }
       }
     },
@@ -46,9 +46,9 @@
       },
       "custom_dimensions": {
         "title": "Custom tank dimensions",
-        "description": "Enter the usable height for '{tank_type}'.\n\nFor vertical cylinders: distance from sensor zero to the maximum fill level (mm).\nFor horizontal cylinders: tank interior diameter (mm).\nFor rectangular tanks: tank interior depth (mm).",
+        "description": "Enter the usable height in {unit} for '{tank_type}'.\n\nFor vertical cylinders: distance from sensor zero to the maximum fill level.\nFor horizontal cylinders: tank interior diameter.\nFor rectangular tanks: tank interior depth.",
         "data": {
-          "custom_tank_height_mm": "Tank height (mm)"
+          "custom_tank_height_mm": "Tank height"
         }
       }
     }

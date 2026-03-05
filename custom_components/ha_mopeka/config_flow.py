@@ -31,6 +31,12 @@ _TANK_TYPE_LABELS: dict[str, str] = {k: v.name for k, v in TANK_SPECS.items()}
 
 # Default custom height (mm) shown as placeholder when a custom type is chosen.
 _DEFAULT_CUSTOM_HEIGHT_MM = 300
+_MM_PER_INCH = 25.4
+
+
+def _display_in_inches(hass) -> bool:
+    """Return True if the HA unit system is imperial (US customary)."""
+    return not hass.config.units.is_metric
 
 
 def _core_schema(defaults: dict[str, Any], address_field: vol.Marker | None = None) -> vol.Schema:
@@ -50,14 +56,21 @@ def _core_schema(defaults: dict[str, Any], address_field: vol.Marker | None = No
     return vol.Schema(fields)
 
 
-def _custom_dimensions_schema(defaults: dict[str, Any]) -> vol.Schema:
-    """Schema for Step 2: custom tank height entry."""
+def _custom_dimensions_schema(defaults: dict[str, Any], use_inches: bool) -> vol.Schema:
+    """Schema for Step 2: custom tank height entry.
+
+    Stores value in mm internally; presents in inches for imperial users.
+    """
+    stored_mm = float(defaults.get(CONF_CUSTOM_TANK_HEIGHT_MM, _DEFAULT_CUSTOM_HEIGHT_MM))
+    if use_inches:
+        display_default = round(stored_mm / _MM_PER_INCH)
+        validator = vol.All(vol.Coerce(int), vol.Range(min=1, max=394))
+    else:
+        display_default = round(stored_mm)
+        validator = vol.All(vol.Coerce(int), vol.Range(min=1, max=10000))
     return vol.Schema(
         {
-            vol.Required(
-                CONF_CUSTOM_TANK_HEIGHT_MM,
-                default=int(defaults.get(CONF_CUSTOM_TANK_HEIGHT_MM, _DEFAULT_CUSTOM_HEIGHT_MM)),
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10000)),
+            vol.Required(CONF_CUSTOM_TANK_HEIGHT_MM, default=display_default): validator,
         }
     )
 
@@ -106,16 +119,22 @@ class MopekaConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_custom_dimensions(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Step 2: collect custom tank height (only for custom tank types)."""
+        use_inches = _display_in_inches(self.hass)
         if user_input is not None:
-            self._pending_data[CONF_CUSTOM_TANK_HEIGHT_MM] = user_input[CONF_CUSTOM_TANK_HEIGHT_MM]
+            raw = user_input[CONF_CUSTOM_TANK_HEIGHT_MM]
+            mm_value = round(raw * _MM_PER_INCH) if use_inches else raw
+            self._pending_data[CONF_CUSTOM_TANK_HEIGHT_MM] = mm_value
             title = f"Mopeka {self._pending_data.get(CONF_ADDRESS, 'sensor')}"
             return self.async_create_entry(title=title, data=self._pending_data)
 
         tank_type = self._pending_data.get(CONF_TANK_TYPE, "custom")
         return self.async_show_form(
             step_id="custom_dimensions",
-            data_schema=_custom_dimensions_schema(self._pending_data),
-            description_placeholders={"tank_type": TANK_SPECS[tank_type].name},
+            data_schema=_custom_dimensions_schema(self._pending_data, use_inches),
+            description_placeholders={
+                "tank_type": TANK_SPECS[tank_type].name,
+                "unit": "inches" if use_inches else "mm",
+            },
         )
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -182,8 +201,11 @@ class MopekaOptionsFlow(OptionsFlow):
 
     async def async_step_custom_dimensions(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Step 2: custom tank height."""
+        use_inches = _display_in_inches(self.hass)
         if user_input is not None:
-            self._pending_options[CONF_CUSTOM_TANK_HEIGHT_MM] = user_input[CONF_CUSTOM_TANK_HEIGHT_MM]
+            raw = user_input[CONF_CUSTOM_TANK_HEIGHT_MM]
+            mm_value = round(raw * _MM_PER_INCH) if use_inches else raw
+            self._pending_options[CONF_CUSTOM_TANK_HEIGHT_MM] = mm_value
             return self.async_create_entry(title="", data=self._pending_options)
 
         existing_height = self.config_entry.options.get(
@@ -193,6 +215,9 @@ class MopekaOptionsFlow(OptionsFlow):
         tank_type = self._pending_options.get(CONF_TANK_TYPE, "custom")
         return self.async_show_form(
             step_id="custom_dimensions",
-            data_schema=_custom_dimensions_schema({CONF_CUSTOM_TANK_HEIGHT_MM: existing_height}),
-            description_placeholders={"tank_type": TANK_SPECS[tank_type].name},
+            data_schema=_custom_dimensions_schema({CONF_CUSTOM_TANK_HEIGHT_MM: existing_height}, use_inches),
+            description_placeholders={
+                "tank_type": TANK_SPECS[tank_type].name,
+                "unit": "inches" if use_inches else "mm",
+            },
         )
