@@ -50,6 +50,10 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
         self.custom_tank_height_mm: float | None = float(raw_custom) if raw_custom is not None else None
         self._last_seen_monotonic: float | None = None
         self._unsub_ble: callable | None = None
+        # Bounce gate: once quality drops to 0 we stay locked (reporting 0%)
+        # until quality recovers to >= 2, preventing brief quality=1 blips
+        # from prematurely restoring a false non-zero level reading.
+        self._quality_locked: bool = False
         _LOGGER.info(
             "Mopeka coordinator init: address=%s medium=%s tank=%s",
             self.address,
@@ -125,14 +129,31 @@ class MopekaCoordinator(DataUpdateCoordinator[MopekaSensorData | None]):
         if parsed is None:
             _LOGGER.debug("Failed to parse Mopeka manufacturer payload for %s", service_info.address)
             return
-        # When the sensor reports quality=0 it has no reliable echo return —
-        # the tank is empty or the signal is lost. Clamp level to 0%.
+        # Bounce gate: lock on quality=0, only release at quality>=2.
+        # This prevents a brief quality=1 blip from restoring a false reading.
         if parsed.quality_raw == 0:
-            _LOGGER.debug(
-                "Quality=0 for %s: clamping tank level to 0%% (was %.1f%%)",
-                service_info.address,
-                parsed.tank_level_percent,
-            )
+            if not self._quality_locked:
+                _LOGGER.debug(
+                    "Quality=0 for %s: locking level to 0%% (was %.1f%%)",
+                    service_info.address,
+                    parsed.tank_level_percent,
+                )
+            self._quality_locked = True
+        elif self._quality_locked:
+            if parsed.quality_raw >= 2:
+                _LOGGER.debug(
+                    "Quality=%s for %s: releasing lock, resuming normal level",
+                    parsed.quality_raw,
+                    service_info.address,
+                )
+                self._quality_locked = False
+            else:
+                _LOGGER.debug(
+                    "Quality=%s for %s: still locked (need >=2 to release)",
+                    parsed.quality_raw,
+                    service_info.address,
+                )
+        if self._quality_locked:
             parsed.tank_level_percent = 0.0
         self._last_seen_monotonic = time.monotonic()
         _LOGGER.debug(

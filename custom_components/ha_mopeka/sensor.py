@@ -181,11 +181,12 @@ class MopekaSensor(CoordinatorEntity[MopekaCoordinator], SensorEntity):
             return None
         data = self.coordinator.data
         inches = data.compensated_distance_mm / 25.4
-        status = (
-            "Empty or signal lost"
-            if data.quality_raw == 0
-            else "OK"
-        )
+        if data.quality_raw == 0:
+            status = "Empty or signal lost"
+        elif self.coordinator._quality_locked:
+            status = "Recovering (signal unstable)"
+        else:
+            status = "OK"
         return {
             "distance_mm": data.compensated_distance_mm,
             "distance_in": round(inches, 1),
