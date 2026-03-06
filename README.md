@@ -127,8 +127,6 @@ The `Tank Level` entity exposes a `level_status` attribute reflecting the curren
 ## Notes
 
 - Designed from:
-  - `docs/INTERNALS.md` section `7.6. Mopeka Tank Sensor Protocol`
-  - Android plugin files under `plugins/mopeka/`
 - Passive integration: availability depends on receiving advertisements.
 - A sensor is marked unavailable if no advertisement has been received within 30 minutes.
 
